@@ -1,0 +1,6 @@
+@LoyalAnimal.Server_HostAddress = http://localhost:5298
+
+GET {{LoyalAnimal.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
