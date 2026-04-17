@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using LoyalAnimal.Shared; // HATA BURADAYDI: .Api.Models yerine .Shared olmalı
+using LoyalAnimal.Shared;
 
 namespace LoyalAnimal.Server.Data;
 

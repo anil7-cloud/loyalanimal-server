@@ -122,6 +122,7 @@
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/LoyalAnimal.Server.csproj.CoreCompileInputs.cache
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/LoyalAnimal.Server.MvcApplicationPartsAssemblyInfo.cs
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/LoyalAnimal.Server.MvcApplicationPartsAssemblyInfo.cache
+/Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/LoyalAnimal.Server.sourcelink.json
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/rjimswa.dswa.cache.json
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/rjsmrazor.dswa.cache.json
 /Users/test/Desktop/LoyalPetsClean/LoyalAnimal.Server/obj/Debug/net8.0/rjsmcshtml.dswa.cache.json
