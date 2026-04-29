@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: loyalanimal
+    env: dotnet
+    plan: free
+    buildCommand: dotnet publish -c Release -o out
+    startCommand: dotnet out/LoyalAnimal.Server.dll --urls http://0.0.0.0:$PORT
