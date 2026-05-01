@@ -77,7 +77,6 @@ app.MapPost("/users/register", async (CreateUserRequest request, AppDbContext db
         City = request.City.Trim(),
         Age = request.Age,
         Gender = request.Gender.Trim(),
-        PhotoUrl = string.Empty,
         CreatedAtUtc = DateTime.UtcNow
     };
 
@@ -98,7 +97,7 @@ app.MapGet("/users", async (AppDbContext db) =>
             City = x.City,
             Age = x.Age,
             Gender = x.Gender,
-            PhotoUrl = x.PhotoUrl,
+            PhotoUrl = string.Empty,
             CreatedAt = x.CreatedAtUtc
         })
         .ToListAsync();
@@ -146,7 +145,7 @@ app.MapGet("/users/discover/{userId:int}", async (int userId, AppDbContext db) =
             City = x.City,
             Age = x.Age,
             Gender = x.Gender,
-            PhotoUrl = x.PhotoUrl,
+            PhotoUrl = string.Empty,
             CreatedAt = x.CreatedAtUtc
         })
         .ToListAsync();
@@ -243,7 +242,7 @@ app.MapGet("/matches/{userId:int}", async (int userId, AppDbContext db) =>
             City = x.City,
             Age = x.Age,
             Gender = x.Gender,
-            PhotoUrl = x.PhotoUrl,
+            PhotoUrl = string.Empty,
             CreatedAt = x.CreatedAtUtc
         })
         .ToListAsync();
@@ -333,7 +332,7 @@ static AppUserDto ToDto(User user)
         City = user.City,
         Age = user.Age,
         Gender = user.Gender,
-        PhotoUrl = user.PhotoUrl,
+        PhotoUrl = string.Empty,
         CreatedAt = user.CreatedAtUtc
     };
 }
