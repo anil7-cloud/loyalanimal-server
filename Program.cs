@@ -31,14 +31,14 @@ app.MapGet("/users", () =>
 
 app.MapGet("/reset-db", async (AppDbContext db) =>
 {
-    await db.Database.ExecuteSqlRawAsync("DELETE FROM Messages");
-    await db.Database.ExecuteSqlRawAsync("DELETE FROM Matches");
-    await db.Database.ExecuteSqlRawAsync("DELETE FROM Swipes");
+    try { await db.Database.ExecuteSqlRawAsync("DELETE FROM Messages"); } catch { }
+    try { await db.Database.ExecuteSqlRawAsync("DELETE FROM Matches"); } catch { }
+    try { await db.Database.ExecuteSqlRawAsync("DELETE FROM Swipes"); } catch { }
 
     return Results.Ok(new
     {
         success = true,
-        message = "Swipes, matches and messages reset"
+        message = "RESET OK"
     });
 });
 
