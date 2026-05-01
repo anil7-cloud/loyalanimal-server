@@ -31,11 +31,9 @@ app.MapGet("/users", () =>
 
 app.MapGet("/reset-db", async (AppDbContext db) =>
 {
-    db.Messages.RemoveRange(db.Messages);
-    db.Matches.RemoveRange(db.Matches);
-    db.Swipes.RemoveRange(db.Swipes);
-
-    await db.SaveChangesAsync();
+    await db.Database.ExecuteSqlRawAsync("DELETE FROM Messages");
+    await db.Database.ExecuteSqlRawAsync("DELETE FROM Matches");
+    await db.Database.ExecuteSqlRawAsync("DELETE FROM Swipes");
 
     return Results.Ok(new
     {
@@ -43,6 +41,7 @@ app.MapGet("/reset-db", async (AppDbContext db) =>
         message = "Swipes, matches and messages reset"
     });
 });
+
 
 app.MapPost("/users/register", (CreateUserRequest request) =>
 {
