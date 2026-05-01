@@ -28,6 +28,22 @@ app.MapGet("/users", () =>
     });
 });
 
+
+app.MapGet("/reset-db", async (AppDbContext db) =>
+{
+    db.Messages.RemoveRange(db.Messages);
+    db.Matches.RemoveRange(db.Matches);
+    db.Swipes.RemoveRange(db.Swipes);
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        success = true,
+        message = "Swipes, matches and messages reset"
+    });
+});
+
 app.MapPost("/users/register", (CreateUserRequest request) =>
 {
     return Results.Ok(new AppUserDto
