@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LoyalAnimal.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d92c7179bc4ccd99842e9ee8ccfdccbd55630ce4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8284ef5f82e14558af9150306181ecccfada0105")]
 [assembly: System.Reflection.AssemblyProductAttribute("LoyalAnimal.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LoyalAnimal.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
