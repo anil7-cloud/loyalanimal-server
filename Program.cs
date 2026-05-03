@@ -33,8 +33,17 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    // TEST AŞAMASI İÇİN: canlı SQLite şemasını sıfırdan oluşturur.
-    // Production'a çıkarken EnsureDeleted satırını kaldır.
+    // Render'daki eski SQLite dosyasını ve eski şemayı temizler.
+    // Test aşaması için uygundur.
+    try
+    {
+        var dbPath = Path.Combine(AppContext.BaseDirectory, "loyalanimal.db");
+
+        if (File.Exists(dbPath))
+            File.Delete(dbPath);
+    }
+    catch { }
+
     db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 }
