@@ -24,6 +24,5 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LoyalPets.Shared\LoyalPets.Shared.csproj" />
   </ItemGroup>
 </Project>
