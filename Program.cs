@@ -8,8 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5298";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
+// Render test için yazılabilir SQLite yolu
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite("Data Source=/tmp/loyalanimal.db"));
 
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PetService>();
@@ -33,11 +34,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    // Render'daki eski SQLite dosyasını ve eski şemayı temizler.
-    // Test aşaması için uygundur.
     try
     {
-        var dbPath = Path.Combine(AppContext.BaseDirectory, "loyalanimal.db");
+        var dbPath = "/tmp/loyalanimal.db";
 
         if (File.Exists(dbPath))
             File.Delete(dbPath);
