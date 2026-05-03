@@ -34,17 +34,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    try
-    {
-        var dbPath = "/tmp/loyalanimal.db";
-
-        if (File.Exists(dbPath))
-            File.Delete(dbPath);
-    }
-    catch { }
-
-    db.Database.EnsureDeleted();
+    using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+}
 }
 
 app.UseCors("AllowAll");
