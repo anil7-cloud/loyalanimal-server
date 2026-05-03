@@ -32,6 +32,10 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    // TEST AŞAMASI İÇİN: canlı SQLite şemasını sıfırdan oluşturur.
+    // Production'a çıkarken EnsureDeleted satırını kaldır.
+    db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 }
 
@@ -119,38 +123,26 @@ app.MapGet("/users/{id:int}", async (int id, AppDbContext db) =>
 
 app.MapGet("/users/discover/{userId:int}", async (int userId, AppDbContext db) =>
 {
-    try
-    {
-        if (userId <= 0)
+    if (userId <= 0)
+        return Results.BadRequest(new { message = "Geçersiz kullanıcı." });
+
+    var users = await db.Users
+        .AsNoTracking()
+        .Where(x => x.Id != userId)
+        .OrderByDescending(x => x.CreatedAtUtc)
+        .Select(x => new AppUserDto
         {
-            return Results.BadRequest(new { message = "Geçersiz kullanıcı." });
-        }
+            Id = x.Id,
+            DisplayName = x.Username,
+            City = x.City,
+            Age = x.Age,
+            Gender = x.Gender,
+            PhotoUrl = string.Empty,
+            CreatedAt = x.CreatedAtUtc
+        })
+        .ToListAsync();
 
-        var users = await db.Users
-            .AsNoTracking()
-            .Where(x => x.Id != userId)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Select(x => new AppUserDto
-            {
-                Id = x.Id,
-                DisplayName = x.Username,
-                City = x.City,
-                Age = x.Age,
-                Gender = x.Gender,
-                PhotoUrl = string.Empty,
-                CreatedAt = x.CreatedAtUtc
-            })
-            .ToListAsync();
-
-        return Results.Ok(users);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("DISCOVER ERROR:");
-        Console.WriteLine(ex);
-
-        return Results.Problem("Discover endpoint hata verdi.");
-    }
+    return Results.Ok(users);
 });
 
 app.MapPost("/swipes", async (SwipeRequest request, AppDbContext db) =>
@@ -179,10 +171,7 @@ app.MapPost("/swipes", async (SwipeRequest request, AppDbContext db) =>
 
         await db.SaveChangesAsync();
     }
-    catch
-    {
-        // Geçici olarak swipe DB hatasını uygulamayı bozmasın diye yutuyoruz.
-    }
+    catch { }
 
     return Results.Ok(new SwipeResponse
     {
