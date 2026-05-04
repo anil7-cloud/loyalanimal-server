@@ -228,6 +228,80 @@ app.MapGet("/matches/{userId:int}", async (int userId, AppDbContext db) =>
     return Results.Ok(users);
 });
 
+app.MapGet("/messages/{user1Id:int}/{user2Id:int}", async (int user1Id, int user2Id, AppDbContext db) =>
+{
+    if (user1Id <= 0 || user2Id <= 0)
+        return Results.BadRequest(new { message = "Geçersiz kullanıcı bilgileri." });
+
+    var user1 = Math.Min(user1Id, user2Id);
+    var user2 = Math.Max(user1Id, user2Id);
+
+    var isMatched = await db.Matches.AnyAsync(x =>
+        x.User1Id == user1 &&
+        x.User2Id == user2);
+
+    if (!isMatched)
+        return Results.BadRequest(new { message = "Eşleşme yok. Mesajlar açılamaz." });
+
+    var messages = await db.Messages
+        .AsNoTracking()
+        .Where(x =>
+            (x.SenderUserId == user1Id && x.ReceiverUserId == user2Id) ||
+            (x.SenderUserId == user2Id && x.ReceiverUserId == user1Id))
+        .OrderBy(x => x.CreatedAtUtc)
+        .Select(x => new MessageDto
+        {
+            Id = x.Id,
+            SenderUserId = x.SenderUserId,
+            ReceiverUserId = x.ReceiverUserId,
+            Text = x.Text,
+            CreatedAt = x.CreatedAtUtc
+        })
+        .ToListAsync();
+
+    return Results.Ok(messages);
+});
+
+app.MapPost("/messages", async (SendMessageRequest request, AppDbContext db) =>
+{
+    if (request.SenderUserId <= 0 ||
+        request.ReceiverUserId <= 0 ||
+        string.IsNullOrWhiteSpace(request.Text))
+    {
+        return Results.BadRequest(new { message = "Geçersiz mesaj bilgileri." });
+    }
+
+    var user1 = Math.Min(request.SenderUserId, request.ReceiverUserId);
+    var user2 = Math.Max(request.SenderUserId, request.ReceiverUserId);
+
+    var isMatched = await db.Matches.AnyAsync(x =>
+        x.User1Id == user1 &&
+        x.User2Id == user2);
+
+    if (!isMatched)
+        return Results.BadRequest(new { message = "Eşleşme yok. Mesaj gönderilemez." });
+
+    var message = new Message
+    {
+        SenderUserId = request.SenderUserId,
+        ReceiverUserId = request.ReceiverUserId,
+        Text = request.Text.Trim(),
+        CreatedAtUtc = DateTime.UtcNow
+    };
+
+    db.Messages.Add(message);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new MessageDto
+    {
+        Id = message.Id,
+        SenderUserId = message.SenderUserId,
+        ReceiverUserId = message.ReceiverUserId,
+        Text = message.Text,
+        CreatedAt = message.CreatedAtUtc
+    });
+});
+
 Console.WriteLine($"PORT: {port}");
 app.Run();
 
@@ -260,4 +334,20 @@ public class SwipeRequest
 public class SwipeResponse
 {
     public bool Matched { get; set; }
+}
+
+public class SendMessageRequest
+{
+    public int SenderUserId { get; set; }
+    public int ReceiverUserId { get; set; }
+    public string Text { get; set; } = "";
+}
+
+public class MessageDto
+{
+    public int Id { get; set; }
+    public int SenderUserId { get; set; }
+    public int ReceiverUserId { get; set; }
+    public string Text { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
 }
