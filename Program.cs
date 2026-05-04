@@ -87,7 +87,16 @@ app.MapGet("/users", async (AppDbContext db) =>
     var users = await db.Users
         .AsNoTracking()
         .OrderByDescending(x => x.CreatedAtUtc)
-        .Select(x => ToDto(x))
+        .Select(x => new AppUserDto
+        {
+            Id = x.Id,
+            DisplayName = x.Username,
+            City = x.City,
+            Age = x.Age,
+            Gender = x.Gender,
+            PhotoUrl = "",
+            CreatedAt = x.CreatedAtUtc
+        })
         .ToListAsync();
 
     return Results.Ok(users);
@@ -104,7 +113,16 @@ app.MapGet("/users/discover/{userId:int}", async (int userId, AppDbContext db) =
         .AsNoTracking()
         .Where(x => x.Id != userId)
         .OrderByDescending(x => x.CreatedAtUtc)
-        .Select(x => ToDto(x))
+        .Select(x => new AppUserDto
+        {
+            Id = x.Id,
+            DisplayName = x.Username,
+            City = x.City,
+            Age = x.Age,
+            Gender = x.Gender,
+            PhotoUrl = "",
+            CreatedAt = x.CreatedAtUtc
+        })
         .ToListAsync();
 
     return Results.Ok(users);
