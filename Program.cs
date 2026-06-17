@@ -6,22 +6,31 @@ var builder = WebApplication.CreateBuilder(args);
 
 // PORT
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5298";
-
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // DATABASE
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=/tmp/loyalanimal.db"));
+{
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        options.UseNpgsql(ConvertDatabaseUrl(databaseUrl));
+    }
+    else
+    {
+        options.UseSqlite("Data Source=loyalanimal.db");
+    }
+});
 
 // CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy
-            .AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
@@ -33,11 +42,24 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
     db.Database.EnsureCreated();
 }
 
 app.UseCors("AllowAll");
+
+
+// DEBUG DB
+app.MapGet("/debug/db", () =>
+{
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+    return Results.Ok(new
+    {
+        database = string.IsNullOrWhiteSpace(databaseUrl) ? "SQLite" : "PostgreSQL",
+        hasDatabaseUrl = !string.IsNullOrWhiteSpace(databaseUrl),
+        time = DateTime.UtcNow
+    });
+});
 
 // ROOT
 app.MapGet("/", () =>
@@ -59,27 +81,21 @@ app.MapPost("/users/register", async (
         string.IsNullOrWhiteSpace(req.Gender) ||
         req.Age <= 0)
     {
-        return Results.BadRequest(new
-        {
-            message = "Geçersiz kullanıcı"
-        });
+        return Results.BadRequest(new { message = "Geçersiz kullanıcı" });
     }
 
     var username = req.DisplayName.Trim();
     var city = req.City.Trim();
     var gender = req.Gender.Trim();
 
-    var existingUser = await db.Users
-        .FirstOrDefaultAsync(x =>
-            x.Username.ToLower() == username.ToLower() &&
-            x.City.ToLower() == city.ToLower() &&
-            x.Gender.ToLower() == gender.ToLower() &&
-            x.Age == req.Age);
+    var existingUser = await db.Users.FirstOrDefaultAsync(x =>
+        x.Username.ToLower() == username.ToLower() &&
+        x.City.ToLower() == city.ToLower() &&
+        x.Gender.ToLower() == gender.ToLower() &&
+        x.Age == req.Age);
 
     if (existingUser != null)
-    {
         return Results.Ok(ToDto(existingUser));
-    }
 
     var user = new User
     {
@@ -91,7 +107,6 @@ app.MapPost("/users/register", async (
     };
 
     db.Users.Add(user);
-
     await db.SaveChangesAsync();
 
     return Results.Ok(ToDto(user));
@@ -100,12 +115,11 @@ app.MapPost("/users/register", async (
 // USERS
 app.MapGet("/users", async (AppDbContext db) =>
 {
-    var userEntities = await db.Users
+    var users = await db.Users
         .AsNoTracking()
         .OrderByDescending(x => x.CreatedAtUtc)
+        
         .ToListAsync();
-
-    var users = userEntities.Select(ToDto).ToList();
 
     return Results.Ok(users);
 });
@@ -116,41 +130,29 @@ app.MapGet("/users/discover/{userId:int}", async (
     AppDbContext db) =>
 {
     if (userId <= 0)
-    {
-        return Results.BadRequest(new
-        {
-            message = "Geçersiz kullanıcı"
-        });
-    }
+        return Results.BadRequest(new { message = "Geçersiz kullanıcı" });
 
-    // Swipe edilen kullanıcılar
     var swipedIds = await db.Swipes
         .AsNoTracking()
         .Where(x => x.FromUserId == userId)
         .Select(x => x.ToUserId)
         .ToListAsync();
 
-    // Önce yeni kullanıcıları getir
-    var userEntities = await db.Users
+    var users = await db.Users
         .AsNoTracking()
-        .Where(x =>
-            x.Id != userId &&
-            !swipedIds.Contains(x.Id))
+        .Where(x => x.Id != userId && !swipedIds.Contains(x.Id))
         .OrderByDescending(x => x.CreatedAtUtc)
+        
         .ToListAsync();
 
-    var users = userEntities.Select(ToDto).ToList();
-
-    // Eğer kullanıcı kalmadıysa eski kullanıcıları tekrar göster
     if (users.Count == 0)
     {
-        var fallbackEntities = await db.Users
+        users = await db.Users
             .AsNoTracking()
             .Where(x => x.Id != userId)
             .OrderByDescending(x => x.CreatedAtUtc)
+            
             .ToListAsync();
-
-        users = fallbackEntities.Select(ToDto).ToList();
     }
 
     return Results.Ok(users);
@@ -161,22 +163,11 @@ app.MapPost("/swipes", async (
     SwipeRequest req,
     AppDbContext db) =>
 {
-    if (req.FromUserId <= 0 ||
-        req.ToUserId <= 0)
-    {
-        return Results.BadRequest(new
-        {
-            message = "Geçersiz kullanıcı"
-        });
-    }
+    if (req.FromUserId <= 0 || req.ToUserId <= 0)
+        return Results.BadRequest(new { message = "Geçersiz kullanıcı" });
 
     if (req.FromUserId == req.ToUserId)
-    {
-        return Results.BadRequest(new
-        {
-            message = "Kendini beğenemezsin"
-        });
-    }
+        return Results.BadRequest(new { message = "Kendini beğenemezsin" });
 
     var old = await db.Swipes.FirstOrDefaultAsync(x =>
         x.FromUserId == req.FromUserId &&
@@ -201,26 +192,15 @@ app.MapPost("/swipes", async (
     await db.SaveChangesAsync();
 
     if (!req.IsLike)
-    {
-        return Results.Ok(new SwipeResponse
-        {
-            Matched = false
-        });
-    }
+        return Results.Ok(new SwipeResponse { Matched = false });
 
-    // Karşılıklı like kontrolü
     var mutual = await db.Swipes.AnyAsync(x =>
         x.FromUserId == req.ToUserId &&
         x.ToUserId == req.FromUserId &&
         x.IsLike);
 
     if (!mutual)
-    {
-        return Results.Ok(new SwipeResponse
-        {
-            Matched = false
-        });
-    }
+        return Results.Ok(new SwipeResponse { Matched = false });
 
     var u1 = Math.Min(req.FromUserId, req.ToUserId);
     var u2 = Math.Max(req.FromUserId, req.ToUserId);
@@ -241,10 +221,7 @@ app.MapPost("/swipes", async (
         await db.SaveChangesAsync();
     }
 
-    return Results.Ok(new SwipeResponse
-    {
-        Matched = true
-    });
+    return Results.Ok(new SwipeResponse { Matched = true });
 });
 
 // MATCHES
@@ -254,24 +231,18 @@ app.MapGet("/matches/{userId:int}", async (
 {
     var matches = await db.Matches
         .AsNoTracking()
-        .Where(x =>
-            x.User1Id == userId ||
-            x.User2Id == userId)
+        .Where(x => x.User1Id == userId || x.User2Id == userId)
         .ToListAsync();
 
     var ids = matches
-        .Select(x =>
-            x.User1Id == userId
-                ? x.User2Id
-                : x.User1Id)
+        .Select(x => x.User1Id == userId ? x.User2Id : x.User1Id)
         .ToList();
 
-    var userEntities = await db.Users
+    var users = await db.Users
         .AsNoTracking()
         .Where(x => ids.Contains(x.Id))
+        
         .ToListAsync();
-
-    var users = userEntities.Select(ToDto).ToList();
 
     return Results.Ok(users);
 });
@@ -283,32 +254,22 @@ app.MapGet("/likes/me/{userId:int}", async (
 {
     var likedMe = await db.Swipes
         .AsNoTracking()
-        .Where(x =>
-            x.ToUserId == userId &&
-            x.IsLike)
+        .Where(x => x.ToUserId == userId && x.IsLike)
         .Select(x => x.FromUserId)
         .Distinct()
         .ToListAsync();
 
     var matched = await db.Matches
         .AsNoTracking()
-        .Where(x =>
-            x.User1Id == userId ||
-            x.User2Id == userId)
-        .Select(x =>
-            x.User1Id == userId
-                ? x.User2Id
-                : x.User1Id)
+        .Where(x => x.User1Id == userId || x.User2Id == userId)
+        .Select(x => x.User1Id == userId ? x.User2Id : x.User1Id)
         .ToListAsync();
 
-    var userEntities = await db.Users
+    var users = await db.Users
         .AsNoTracking()
-        .Where(x =>
-            likedMe.Contains(x.Id) &&
-            !matched.Contains(x.Id))
+        .Where(x => likedMe.Contains(x.Id) && !matched.Contains(x.Id))
+        
         .ToListAsync();
-
-    var users = userEntities.Select(ToDto).ToList();
 
     return Results.Ok(users);
 });
@@ -327,21 +288,13 @@ app.MapGet("/messages/{u1:int}/{u2:int}", async (
         x.User2Id == b);
 
     if (!matched)
-    {
-        return Results.BadRequest(new
-        {
-            message = "Match yok"
-        });
-    }
+        return Results.BadRequest(new { message = "Match yok" });
 
     var msgs = await db.Messages
         .AsNoTracking()
         .Where(x =>
-            (x.SenderUserId == u1 &&
-             x.ReceiverUserId == u2) ||
-
-            (x.SenderUserId == u2 &&
-             x.ReceiverUserId == u1))
+            (x.SenderUserId == u1 && x.ReceiverUserId == u2) ||
+            (x.SenderUserId == u2 && x.ReceiverUserId == u1))
         .OrderBy(x => x.CreatedAtUtc)
         .Select(x => new MessageDto
         {
@@ -362,12 +315,7 @@ app.MapPost("/messages", async (
     AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(req.Text))
-    {
-        return Results.BadRequest(new
-        {
-            message = "Mesaj boş"
-        });
-    }
+        return Results.BadRequest(new { message = "Mesaj boş" });
 
     var a = Math.Min(req.SenderUserId, req.ReceiverUserId);
     var b = Math.Max(req.SenderUserId, req.ReceiverUserId);
@@ -377,12 +325,7 @@ app.MapPost("/messages", async (
         x.User2Id == b);
 
     if (!matched)
-    {
-        return Results.BadRequest(new
-        {
-            message = "Match yok"
-        });
-    }
+        return Results.BadRequest(new { message = "Match yok" });
 
     var msg = new Message
     {
@@ -393,7 +336,6 @@ app.MapPost("/messages", async (
     };
 
     db.Messages.Add(msg);
-
     await db.SaveChangesAsync();
 
     return Results.Ok(new MessageDto
@@ -407,6 +349,25 @@ app.MapPost("/messages", async (
 });
 
 app.Run();
+
+// PostgreSQL URL converter
+static string ConvertDatabaseUrl(string databaseUrl)
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':', 2);
+
+    var username = Uri.UnescapeDataString(userInfo[0]);
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+
+    return
+        $"Host={uri.Host};" +
+        $"Port={uri.Port};" +
+        $"Database={uri.AbsolutePath.TrimStart('/')};" +
+        $"Username={username};" +
+        $"Password={password};" +
+        $"SSL Mode=Require;" +
+        $"Trust Server Certificate=true;";
+}
 
 // DTO
 static AppUserDto ToDto(User u) => new()
