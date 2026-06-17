@@ -365,7 +365,7 @@ static string ConvertDatabaseUrl(string databaseUrl)
 
     return
         $"Host={uri.Host};" +
-        $"Port={uri.Port};" +
+         Port={(uri.Port > 0 ? uri.Port : 5432)};" +
         $"Database={uri.AbsolutePath.TrimStart('/')};" +
         $"Username={username};" +
         $"Password={password};" +
