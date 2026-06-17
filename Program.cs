@@ -362,10 +362,11 @@ static string ConvertDatabaseUrl(string databaseUrl)
 
     var username = Uri.UnescapeDataString(userInfo[0]);
     var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+    var port = uri.Port > 0 ? uri.Port : 5432;
 
     return
         $"Host={uri.Host};" +
-        $"Port={(uri.Port > 0 ? uri.Port : 5432)};" +
+        $"Port={port};" +
         $"Database={uri.AbsolutePath.TrimStart('/')};" +
         $"Username={username};" +
         $"Password={password};" +
