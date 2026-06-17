@@ -9,7 +9,11 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "5298";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // DATABASE
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL1") 
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL2");
+
+databaseUrl = databaseUrl?.Trim();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
