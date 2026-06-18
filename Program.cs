@@ -129,6 +129,19 @@ app.MapGet("/users", async (AppDbContext db) =>
     return Results.Ok(users);
 });
 
+// USER DETAIL
+app.MapGet("/users/{id:int}", async (int id, AppDbContext db) =>
+{
+    var user = await db.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == id);
+
+    if (user == null)
+        return Results.NotFound(new { message = "Kullanıcı bulunamadı" });
+
+    return Results.Ok(ToDto(user));
+});
+
 // DISCOVER
 app.MapGet("/users/discover/{userId:int}", async (
     int userId,
