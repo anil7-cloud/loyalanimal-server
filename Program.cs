@@ -119,11 +119,12 @@ app.MapPost("/users/register", async (
 // USERS
 app.MapGet("/users", async (AppDbContext db) =>
 {
-    var users = await db.Users
+    var userEntities = await db.Users
         .AsNoTracking()
         .OrderByDescending(x => x.CreatedAtUtc)
-        
         .ToListAsync();
+
+    var users = userEntities.Select(ToDto).ToList();
 
     return Results.Ok(users);
 });
@@ -134,7 +135,12 @@ app.MapGet("/users/discover/{userId:int}", async (
     AppDbContext db) =>
 {
     if (userId <= 0)
-        return Results.BadRequest(new { message = "Geçersiz kullanıcı" });
+    {
+        return Results.BadRequest(new
+        {
+            message = "Geçersiz kullanıcı"
+        });
+    }
 
     var swipedIds = await db.Swipes
         .AsNoTracking()
@@ -142,21 +148,25 @@ app.MapGet("/users/discover/{userId:int}", async (
         .Select(x => x.ToUserId)
         .ToListAsync();
 
-    var users = await db.Users
+    var userEntities = await db.Users
         .AsNoTracking()
-        .Where(x => x.Id != userId && !swipedIds.Contains(x.Id))
+        .Where(x =>
+            x.Id != userId &&
+            !swipedIds.Contains(x.Id))
         .OrderByDescending(x => x.CreatedAtUtc)
-        
         .ToListAsync();
+
+    var users = userEntities.Select(ToDto).ToList();
 
     if (users.Count == 0)
     {
-        users = await db.Users
+        var fallbackEntities = await db.Users
             .AsNoTracking()
             .Where(x => x.Id != userId)
             .OrderByDescending(x => x.CreatedAtUtc)
-            
             .ToListAsync();
+
+        users = fallbackEntities.Select(ToDto).ToList();
     }
 
     return Results.Ok(users);
