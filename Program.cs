@@ -431,7 +431,10 @@ app.MapPost("/admin/clear-default-photos", async (AppDbContext db) =>
     foreach (var user in users)
     {
         if (!string.IsNullOrWhiteSpace(user.PhotoUrl) &&
-            user.PhotoUrl.Contains("picsum.photos"))
+            (user.PhotoUrl.Contains("picsum.photos") ||
+             user.PhotoUrl.Contains("dicebear.com") ||
+             user.PhotoUrl.Contains("placehold.co") ||
+             user.PhotoUrl.StartsWith("/data/user/")))
         {
             user.PhotoUrl = "";
         }
