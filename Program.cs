@@ -134,7 +134,7 @@ app.MapPost("/users/register", async (
         City = city,
         Age = req.Age,
         Gender = gender,
-        PhotoUrl = string.IsNullOrWhiteSpace(req.PhotoUrl) ? GetDefaultPhotoUrl() : req.PhotoUrl.Trim(),
+        PhotoUrl = req.PhotoUrl?.Trim() ?? "",
         CreatedAtUtc = DateTime.UtcNow
     };
 
@@ -445,21 +445,6 @@ static string ConvertDatabaseUrl(string databaseUrl)
 }
 
 
-static string GetDefaultPhotoUrl()
-{
-    var photos = new[]
-    {
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal1",
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal2",
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal3",
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal4",
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal5",
-        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal6"
-    };
-
-    return photos[Random.Shared.Next(photos.Length)];
-}
-
 // DTO
 static AppUserDto ToDto(User u) => new()
 {
@@ -468,9 +453,7 @@ static AppUserDto ToDto(User u) => new()
     City = u.City,
     Age = u.Age,
     Gender = u.Gender,
-    PhotoUrl = string.IsNullOrWhiteSpace(u.PhotoUrl)
-        ? $"https://picsum.photos/seed/loyalanimal-{u.Id}/800/600"
-        : u.PhotoUrl,
+    PhotoUrl = u.PhotoUrl ?? "",
     CreatedAt = u.CreatedAtUtc
 };
 
