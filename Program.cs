@@ -170,6 +170,25 @@ app.MapGet("/users/{id:int}", async (int id, AppDbContext db) =>
     return Results.Ok(ToDto(user));
 });
 
+
+// UPDATE USER PHOTO
+app.MapPost("/users/{id:int}/photo", async (
+    int id,
+    UpdatePhotoRequest req,
+    AppDbContext db) =>
+{
+    var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id);
+
+    if (user == null)
+        return Results.NotFound(new { message = "Kullanıcı bulunamadı" });
+
+    user.PhotoUrl = req.PhotoUrl?.Trim() ?? "";
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(ToDto(user));
+});
+
 // DISCOVER
 app.MapGet("/users/discover/{userId:int}", async (
     int userId,
@@ -485,4 +504,10 @@ public class MessageDto
     public int ReceiverUserId { get; set; }
     public string Text { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+}
+
+
+public class UpdatePhotoRequest
+{
+    public string PhotoUrl { get; set; } = "";
 }
