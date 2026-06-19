@@ -107,6 +107,7 @@ app.MapPost("/users/register", async (
         City = city,
         Age = req.Age,
         Gender = gender,
+        PhotoUrl = req.PhotoUrl?.Trim() ?? "",
         CreatedAtUtc = DateTime.UtcNow
     };
 
@@ -405,7 +406,9 @@ static AppUserDto ToDto(User u) => new()
     City = u.City,
     Age = u.Age,
     Gender = u.Gender,
-    PhotoUrl = $"https://picsum.photos/seed/loyalanimal-{u.Id}/800/600",
+    PhotoUrl = string.IsNullOrWhiteSpace(u.PhotoUrl)
+        ? $"https://picsum.photos/seed/loyalanimal-{u.Id}/800/600"
+        : u.PhotoUrl,
     CreatedAt = u.CreatedAtUtc
 };
 

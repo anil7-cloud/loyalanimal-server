@@ -12,6 +12,8 @@ public class User
 
     public string PasswordHash { get; set; } = string.Empty;
 
+    public string PhotoUrl { get; set; } = string.Empty;
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     // 🔥 EKLENMESİ GEREKENLER
