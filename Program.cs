@@ -107,7 +107,7 @@ app.MapPost("/users/register", async (
         City = city,
         Age = req.Age,
         Gender = gender,
-        PhotoUrl = req.PhotoUrl?.Trim() ?? "",
+        PhotoUrl = req.PhotoUrl.Trim(),
         CreatedAtUtc = DateTime.UtcNow
     };
 
