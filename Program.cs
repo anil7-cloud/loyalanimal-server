@@ -510,3 +510,23 @@ public class UpdatePhotoRequest
 {
     public string PhotoUrl { get; set; } = "";
 }
+
+
+app.MapPost("/admin/clear-default-photos", async (AppDbContext db) =>
+{
+    var users = await db.Users.ToListAsync();
+
+    foreach (var user in users)
+    {
+        if (!string.IsNullOrWhiteSpace(user.PhotoUrl) &&
+            user.PhotoUrl.Contains("picsum.photos"))
+        {
+            user.PhotoUrl = "";
+        }
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok("Default photos cleared");
+});
+
