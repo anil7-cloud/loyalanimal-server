@@ -134,7 +134,7 @@ app.MapPost("/users/register", async (
         City = city,
         Age = req.Age,
         Gender = gender,
-        PhotoUrl = req.PhotoUrl.Trim(),
+        PhotoUrl = string.IsNullOrWhiteSpace(req.PhotoUrl) ? GetDefaultPhotoUrl() : req.PhotoUrl.Trim(),
         CreatedAtUtc = DateTime.UtcNow
     };
 
@@ -182,7 +182,7 @@ app.MapPost("/users/{id:int}/photo", async (
     if (user == null)
         return Results.NotFound(new { message = "Kullanıcı bulunamadı" });
 
-    user.PhotoUrl = req.PhotoUrl?.Trim() ?? "";
+    user.PhotoUrl = string.IsNullOrWhiteSpace(req.PhotoUrl) ? user.PhotoUrl : req.PhotoUrl.Trim();
 
     await db.SaveChangesAsync();
 
@@ -442,6 +442,22 @@ static string ConvertDatabaseUrl(string databaseUrl)
         $"Password={password};" +
         $"SSL Mode=Require;" +
         $"Trust Server Certificate=true;";
+}
+
+
+static string GetDefaultPhotoUrl()
+{
+    var photos = new[]
+    {
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal1",
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal2",
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal3",
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal4",
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal5",
+        "https://api.dicebear.com/8.x/adventurer/png?seed=loyalanimal6"
+    };
+
+    return photos[Random.Shared.Next(photos.Length)];
 }
 
 // DTO
