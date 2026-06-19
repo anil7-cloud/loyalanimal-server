@@ -405,7 +405,9 @@ static AppUserDto ToDto(User u) => new()
     City = u.City,
     Age = u.Age,
     Gender = u.Gender,
-    PhotoUrl = "",
+    PhotoUrl = string.IsNullOrWhiteSpace(u.PhotoUrl)
+        ? $"https://picsum.photos/seed/loyalanimal-{u.Id}/800/600"
+        : u.PhotoUrl,
     CreatedAt = u.CreatedAtUtc
 };
 
