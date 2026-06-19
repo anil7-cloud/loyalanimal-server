@@ -66,6 +66,33 @@ app.MapGet("/debug/db", () =>
 });
 
 // ROOT
+
+// Ensure PhotoUrl column exists
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            ALTER TABLE "Users"
+            ADD COLUMN IF NOT EXISTS "PhotoUrl" text NOT NULL DEFAULT '';
+        """);
+    }
+    catch
+    {
+        // SQLite/local fallback
+        try
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE Users
+                ADD COLUMN PhotoUrl TEXT NOT NULL DEFAULT '';
+            """);
+        }
+        catch { }
+    }
+}
+
 app.MapGet("/", () =>
 {
     return Results.Ok(new
