@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using LoyalAnimal.Server.Data;
 using LoyalAnimal.Shared;
 
@@ -443,6 +445,59 @@ app.MapPost("/admin/clear-default-photos", async (AppDbContext db) =>
     await db.SaveChangesAsync();
 
     return Results.Ok("Default photos cleared");
+});
+
+
+// UPLOAD USER PHOTO TO CLOUDINARY
+app.MapPost("/users/{id:int}/photo/upload", async (int id, HttpRequest request, AppDbContext db) =>
+{
+    var cloudName = Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME");
+    var apiKey = Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY");
+    var apiSecret = Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET");
+
+    if (string.IsNullOrWhiteSpace(cloudName) ||
+        string.IsNullOrWhiteSpace(apiKey) ||
+        string.IsNullOrWhiteSpace(apiSecret))
+    {
+        return Results.BadRequest(new { message = "Cloudinary ayarları eksik" });
+    }
+
+    var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id);
+
+    if (user == null)
+        return Results.NotFound(new { message = "Kullanıcı bulunamadı" });
+
+    if (!request.HasFormContentType)
+        return Results.BadRequest(new { message = "Form-data bekleniyor" });
+
+    var form = await request.ReadFormAsync();
+    var file = form.Files.FirstOrDefault();
+
+    if (file == null || file.Length == 0)
+        return Results.BadRequest(new { message = "Dosya bulunamadı" });
+
+    await using var stream = file.OpenReadStream();
+
+    var account = new Account(cloudName, apiKey, apiSecret);
+    var cloudinary = new Cloudinary(account);
+
+    var uploadParams = new ImageUploadParams
+    {
+        File = new FileDescription(file.FileName, stream),
+        Folder = "loyalanimal/users",
+        PublicId = $"user_{id}_{DateTime.UtcNow.Ticks}",
+        Overwrite = true
+    };
+
+    var uploadResult = await cloudinary.UploadAsync(uploadParams);
+
+    if (uploadResult.Error != null)
+        return Results.BadRequest(new { message = uploadResult.Error.Message });
+
+    user.PhotoUrl = uploadResult.SecureUrl.ToString();
+    await db.SaveChangesAsync();
+
+    return Results.Ok(ToDto(user));
 });
 
 app.Run();
