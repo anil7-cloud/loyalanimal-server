@@ -451,9 +451,9 @@ app.MapPost("/admin/clear-default-photos", async (AppDbContext db) =>
 // UPLOAD USER PHOTO TO CLOUDINARY
 app.MapPost("/users/{id:int}/photo/upload", async (int id, HttpRequest request, AppDbContext db) =>
 {
-    var cloudName = Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME");
-    var apiKey = Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY");
-    var apiSecret = Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET");
+    var cloudName = Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME")?.Trim();
+    var apiKey = Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY")?.Trim();
+    var apiSecret = Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")?.Trim();
 
     if (string.IsNullOrWhiteSpace(cloudName) ||
         string.IsNullOrWhiteSpace(apiKey) ||
