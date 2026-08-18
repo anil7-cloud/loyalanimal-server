@@ -204,13 +204,43 @@ app.MapGet("/users/discover/{userId:int}", async (
         });
     }
 
+    // Giriş yapan kullanıcıyı bul
+    var currentUser = await db.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == userId);
+
+    if (currentUser == null)
+    {
+        return Results.NotFound(new
+        {
+            message = "Kullanıcı bulunamadı"
+        });
+    }
+
+    // Daha önce swipe edilen kullanıcıları bul
     var swipedIds = await db.Swipes
         .AsNoTracking()
         .Where(x => x.FromUserId == userId)
         .Select(x => x.ToUserId)
+        .Distinct()
         .ToListAsync();
 
-    var userEntities = await db.Users
+    string myGender = (currentUser.Gender ?? "")
+        .Trim()
+        .ToLower();
+
+    // Erkek -> kadın
+    // Kadın -> erkek
+    bool currentUserIsMale =
+        myGender == "erkek" ||
+        myGender == "male";
+
+    bool currentUserIsFemale =
+        myGender == "kadın" ||
+        myGender == "kadin" ||
+        myGender == "female";
+
+    var candidates = await db.Users
         .AsNoTracking()
         .Where(x =>
             x.Id != userId &&
@@ -218,18 +248,40 @@ app.MapGet("/users/discover/{userId:int}", async (
         .OrderByDescending(x => x.CreatedAtUtc)
         .ToListAsync();
 
-    var users = userEntities.Select(ToDto).ToList();
-
-    if (users.Count == 0)
+    // Cinsiyet filtresi
+    if (currentUserIsMale)
     {
-        var fallbackEntities = await db.Users
-            .AsNoTracking()
-            .Where(x => x.Id != userId)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .ToListAsync();
+        candidates = candidates
+            .Where(x =>
+            {
+                string gender = (x.Gender ?? "")
+                    .Trim()
+                    .ToLower();
 
-        users = fallbackEntities.Select(ToDto).ToList();
+                return gender == "kadın" ||
+                       gender == "kadin" ||
+                       gender == "female";
+            })
+            .ToList();
     }
+    else if (currentUserIsFemale)
+    {
+        candidates = candidates
+            .Where(x =>
+            {
+                string gender = (x.Gender ?? "")
+                    .Trim()
+                    .ToLower();
+
+                return gender == "erkek" ||
+                       gender == "male";
+            })
+            .ToList();
+    }
+
+    var users = candidates
+        .Select(ToDto)
+        .ToList();
 
     return Results.Ok(users);
 });
