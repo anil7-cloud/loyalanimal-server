@@ -208,6 +208,27 @@ app.MapGet("/pets", async (PetService petService) =>
     return Results.Ok(pets);
 });
 
+
+// PET CREATE
+app.MapPost("/pets", async (
+    LoyalAnimal.Shared.Pet pet,
+    AppDbContext db) =>
+{
+    if (pet.OwnerUserId <= 0)
+        return Results.BadRequest("OwnerUserId gerekli.");
+
+    if (string.IsNullOrWhiteSpace(pet.Name))
+        return Results.BadRequest("Pet adı gerekli.");
+
+    pet.Id = 0;
+    pet.CreatedAtUtc = DateTime.UtcNow;
+
+    db.Pets.Add(pet);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/pets/{pet.Id}", pet);
+});
+
 // USERS
 app.MapGet("/users", async (AppDbContext db) =>
 {
