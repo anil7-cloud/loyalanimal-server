@@ -229,6 +229,30 @@ app.MapPost("/pets", async (
     return Results.Created($"/pets/{pet.Id}", pet);
 });
 
+
+// PET UPDATE
+app.MapPut("/pets/{id:int}", async (
+    int id,
+    LoyalAnimal.Shared.Pet input,
+    AppDbContext db) =>
+{
+    var pet = await db.Pets.FirstOrDefaultAsync(x => x.Id == id);
+
+    if (pet is null)
+        return Results.NotFound();
+
+    pet.OwnerUserId = input.OwnerUserId;
+    pet.Name = input.Name;
+    pet.Type = input.Type;
+    pet.Breed = input.Breed;
+    pet.Age = input.Age;
+    pet.PhotoUrl = input.PhotoUrl;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(pet);
+});
+
 // USERS
 app.MapGet("/users", async (AppDbContext db) =>
 {
