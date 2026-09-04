@@ -15,4 +15,6 @@ public class AppDbContext : DbContext
     public DbSet<Swipe> Swipes => Set<Swipe>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
+    public DbSet<UserReport> UserReports => Set<UserReport>();
 }
