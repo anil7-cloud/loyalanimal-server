@@ -246,6 +246,9 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.ExecuteSqlRaw("""
             ALTER TABLE "Users"
+            ADD COLUMN IF NOT EXISTS "IsAdmin" boolean NOT NULL DEFAULT FALSE;
+
+            ALTER TABLE "Users"
             ADD COLUMN IF NOT EXISTS "IsEmailVerified" boolean NOT NULL DEFAULT FALSE;
 
             ALTER TABLE "Users"
@@ -265,6 +268,14 @@ using (var scope = app.Services.CreateScope())
         var columns = db.Database
             .SqlQueryRaw<string>("SELECT name AS \"Value\" FROM pragma_table_info('Users')")
             .ToList();
+
+        if (!columns.Contains("IsAdmin"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE Users
+                ADD COLUMN IsAdmin INTEGER NOT NULL DEFAULT 0;
+            """);
+        }
 
         if (!columns.Contains("IsEmailVerified"))
         {
