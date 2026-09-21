@@ -11,6 +11,13 @@ public class User
     public string Email { get; set; } = string.Empty;
 
     public string PasswordHash { get; set; } = string.Empty;
+    public bool IsEmailVerified { get; set; } = false;
+
+    public string? EmailVerificationTokenHash { get; set; }
+
+    public DateTime? EmailVerificationExpiresAtUtc { get; set; }
+    public DateTime? EmailVerificationLastSentAtUtc { get; set; }
+
 
     public string PhotoUrl { get; set; } = string.Empty;
 
@@ -22,4 +29,6 @@ public class User
     public int Age { get; set; }
 
     public string Gender { get; set; } = string.Empty;
+
+    public bool IsAdmin { get; set; } = false;
 }
