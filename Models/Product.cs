@@ -8,7 +8,9 @@ public class Product
     public int ShopId { get; set; }
 
     public string Name { get; set; } = string.Empty;
+
     public string Description { get; set; } = string.Empty;
+
     public string Category { get; set; } = string.Empty;
 
     public decimal Price { get; set; }
@@ -16,6 +18,9 @@ public class Product
     public int Stock { get; set; }
 
     public string ImageUrl { get; set; } = string.Empty;
+
+    // Yönetici onaylamadan ürün yayınlanmaz.
+    public bool IsApproved { get; set; } = false;
 
     public bool IsActive { get; set; } = true;
 

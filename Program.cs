@@ -1498,7 +1498,7 @@ app.MapGet("/shops/{shopId:int}/products", async (
 
     var products = await db.Products
         .AsNoTracking()
-        .Where(p => p.ShopId == shopId && p.IsActive)
+        .Where(p => p.ShopId == shopId && p.IsActive && p.IsApproved)
         .OrderByDescending(p => p.CreatedAtUtc)
         .ToListAsync();
 
@@ -1557,6 +1557,7 @@ app.MapPost("/shops/{shopId:int}/products", async (
         Price = req.Price,
         Stock = req.Stock,
         ImageUrl = req.ImageUrl?.Trim() ?? "",
+        IsApproved = false,
         IsActive = true,
         CreatedAtUtc = DateTime.UtcNow
     };
@@ -1615,6 +1616,9 @@ app.MapPut("/products/{productId:int}", async (
 
     if (!string.IsNullOrWhiteSpace(req.ImageUrl))
         product.ImageUrl = req.ImageUrl.Trim();
+
+    // Ürün değiştirildiği için yeniden yönetici onayı gerekir.
+    product.IsApproved = false;
 
     await db.SaveChangesAsync();
 
@@ -1763,6 +1767,9 @@ app.MapPost("/products/{productId:int}/image", async (
 
     product.ImageUrl = uploadResult.SecureUrl.ToString();
 
+    // Görsel değiştiği için ürün yeniden yönetici onayına gider.
+    product.IsApproved = false;
+
     await db.SaveChangesAsync();
 
     return Results.Ok(new
@@ -1773,6 +1780,88 @@ app.MapPost("/products/{productId:int}/image", async (
     });
 }).RequireAuthorization();
 
+
+
+// ======================================================
+// ADMIN - PRODUCT APPROVAL
+// ======================================================
+
+// Sadece admin: onay bekleyen ürünler.
+app.MapGet(
+    "/admin/products/pending",
+    async (AppDbContext db) =>
+    {
+        var products = await db.Products
+            .AsNoTracking()
+            .Where(p => !p.IsApproved && p.IsActive)
+            .OrderBy(p => p.CreatedAtUtc)
+            .ToListAsync();
+
+        return Results.Ok(products);
+    })
+    .RequireAuthorization("AdminOnly");
+
+// Sadece admin: ürünü onayla.
+app.MapPost(
+    "/admin/products/{productId:int}/approve",
+    async (int productId, AppDbContext db) =>
+    {
+        var product = await db.Products
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product is null)
+            return Results.NotFound(new { message = "Ürün bulunamadı." });
+
+        if (!product.IsActive)
+            return Results.BadRequest(new { message = "Ürün aktif değil." });
+
+        var shopIsApproved = await db.Shops.AnyAsync(s =>
+            s.Id == product.ShopId &&
+            s.IsApproved &&
+            s.IsActive);
+
+        if (!shopIsApproved)
+        {
+            return Results.BadRequest(new
+            {
+                message = "Ürünün bağlı olduğu petshop onaylı değil."
+            });
+        }
+
+        product.IsApproved = true;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new
+        {
+            message = "Ürün onaylandı.",
+            product
+        });
+    })
+    .RequireAuthorization("AdminOnly");
+
+// Sadece admin: ürünü reddet.
+app.MapPost(
+    "/admin/products/{productId:int}/reject",
+    async (int productId, AppDbContext db) =>
+    {
+        var product = await db.Products
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product is null)
+            return Results.NotFound(new { message = "Ürün bulunamadı." });
+
+        product.IsApproved = false;
+        product.IsActive = false;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new
+        {
+            message = "Ürün reddedildi."
+        });
+    })
+    .RequireAuthorization("AdminOnly");
 
 
 // ======================================================
