@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
     public DbSet<Shop> Shops => Set<Shop>();
     public DbSet<Product> Products => Set<Product>();
 
+    public DbSet<VetClinic> VetClinics => Set<VetClinic>();
+
     // 🔥 EKLEMEN GEREKENLER
     public DbSet<Swipe> Swipes => Set<Swipe>();
     public DbSet<Match> Matches => Set<Match>();
