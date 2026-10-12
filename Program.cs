@@ -1322,6 +1322,22 @@ app.MapDelete("/users/{id:int}", async (
     var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id);
     if (user == null) return Results.NotFound(new { message = "Kullanıcı bulunamadı" });
 
+    // Remove contact requests sent or received by this user.
+    db.PetContactRequests.RemoveRange(
+        db.PetContactRequests.Where(x =>
+            x.RequesterUserId == id || x.OwnerUserId == id));
+
+    // Remove products belonging to this user's shops before removing shops.
+    var ownedShopIds = db.Shops
+        .Where(x => x.OwnerUserId == id)
+        .Select(x => x.Id);
+
+    db.Products.RemoveRange(
+        db.Products.Where(x => ownedShopIds.Contains(x.ShopId)));
+
+    db.Shops.RemoveRange(db.Shops.Where(x => x.OwnerUserId == id));
+    db.VetClinics.RemoveRange(db.VetClinics.Where(x => x.OwnerUserId == id));
+
     db.Messages.RemoveRange(db.Messages.Where(x => x.SenderUserId == id || x.ReceiverUserId == id));
     db.Matches.RemoveRange(db.Matches.Where(x => x.User1Id == id || x.User2Id == id));
     db.Swipes.RemoveRange(db.Swipes.Where(x => x.FromUserId == id || x.ToUserId == id));
