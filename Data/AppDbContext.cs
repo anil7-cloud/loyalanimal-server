@@ -11,6 +11,9 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Pet> Pets => Set<Pet>();
 
+    // KAYIP HAYVAN ILANLARI
+    public DbSet<LostPetListing> LostPetListings => Set<LostPetListing>();
+
     public DbSet<PetContactRequest> PetContactRequests => Set<PetContactRequest>();
 
     // PETSHOP
