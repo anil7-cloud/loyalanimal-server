@@ -28,4 +28,6 @@ public class AppDbContext : DbContext
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<UserReport> UserReports => Set<UserReport>();
+
+    public DbSet<LoyalAnimal.Server.Models.CloudinaryDeletionJob> CloudinaryDeletionJobs => Set<LoyalAnimal.Server.Models.CloudinaryDeletionJob>();
 }
