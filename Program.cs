@@ -55,6 +55,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<PetService>();
 builder.Services.AddHostedService<CloudinaryDeletionWorker>();
 builder.Services.AddHttpClient<VerificationEmailService>();
+builder.Services.AddHttpClient<AiVetService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -2603,6 +2604,58 @@ app.MapPost("/admin/vet-clinics/{clinicId:int}/reject", async (
 
     return Results.Ok(new { message = "Veteriner başvurusu reddedildi." });
 }).RequireAuthorization("AdminOnly");
+
+// AI VETERINARIAN CHAT
+app.MapPost("/ai-vet/chat", async (
+    AiVetChatRequest req,
+    AiVetService aiVetService,
+    System.Security.Claims.ClaimsPrincipal principal,
+    CancellationToken cancellationToken) =>
+{
+    var userId =
+        LoyalAnimal.Server.Security.AuthenticatedUser.GetUserId(principal);
+
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var message = req.Message?.Trim() ?? "";
+
+    if (string.IsNullOrWhiteSpace(message))
+        return Results.BadRequest(new
+        {
+            message = "Lütfen bir soru yazın."
+        });
+
+    if (message.Length > 2000)
+        return Results.BadRequest(new
+        {
+            message = "Soru en fazla 2000 karakter olabilir."
+        });
+
+    if (!aiVetService.IsConfigured)
+        return Results.Problem(
+            detail: "Yapay zekâ servisi henüz yapılandırılmadı.",
+            statusCode: 503);
+
+    try
+    {
+        var reply = await aiVetService.AskAsync(
+            message, cancellationToken);
+
+        return Results.Ok(new { reply });
+    }
+    catch (OperationCanceledException) when (
+        cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception)
+    {
+        return Results.Problem(
+            detail: "Yapay zekâ yanıtı şu anda alınamıyor. Lütfen daha sonra tekrar deneyin.",
+            statusCode: 502);
+    }
+}).RequireAuthorization();
 
 app.Run();
 
