@@ -2640,7 +2640,9 @@ app.MapPost("/ai-vet/chat", async (
     try
     {
         var reply = await aiVetService.AskAsync(
-            message, cancellationToken);
+            message,
+            cancellationToken,
+            req.History);
 
         return Results.Ok(new { reply });
     }

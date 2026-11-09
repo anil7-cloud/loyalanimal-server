@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using LoyalAnimal.Server.Models;
 
 namespace LoyalAnimal.Server.Services;
 
@@ -23,7 +24,8 @@ public sealed class AiVetService
 
     public async Task<string> AskAsync(
         string question,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<AiVetChatMessage>? history = null)
     {
         if (!IsConfigured)
             throw new InvalidOperationException(
@@ -62,17 +64,7 @@ public sealed class AiVetService
                     }
                 }
             },
-            contents = new[]
-            {
-                new
-                {
-                    role = "user",
-                    parts = new[]
-                    {
-                        new { text = question }
-                    }
-                }
-            },
+            contents = BuildContents(question, history),
             generationConfig = new
             {
                 maxOutputTokens = 1000
@@ -123,5 +115,40 @@ public sealed class AiVetService
 
         throw new InvalidOperationException(
             "Gemini yanıtı alınamadı.");
+    }
+
+    private static object[] BuildContents(
+        string question,
+        IReadOnlyList<AiVetChatMessage>? history)
+    {
+        var contents = new List<object>();
+
+        if (history is not null)
+        {
+            foreach (var item in history.TakeLast(20))
+            {
+                var role = item.Role?.Trim().ToLowerInvariant();
+                var value = item.Text?.Trim();
+
+                if (role is not ("user" or "model") ||
+                    string.IsNullOrWhiteSpace(value) ||
+                    value.Length > 2000)
+                    continue;
+
+                contents.Add(new
+                {
+                    role,
+                    parts = new[] { new { text = value } }
+                });
+            }
+        }
+
+        contents.Add(new
+        {
+            role = "user",
+            parts = new[] { new { text = question } }
+        });
+
+        return contents.ToArray();
     }
 }
