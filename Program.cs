@@ -3247,7 +3247,6 @@ app.MapPost("/admin/vet-clinics/{clinicId:int}/reject", async (
     return Results.Ok(new { message = "Veteriner başvurusu reddedildi." });
 }).RequireAuthorization("AdminOnly");
 
-
 // AI VETERINARIAN CHAT
 app.MapPost("/ai-vet/chat", async (
     AiVetChatRequest req,
@@ -3283,7 +3282,9 @@ app.MapPost("/ai-vet/chat", async (
     try
     {
         var reply = await aiVetService.AskAsync(
-            message, cancellationToken);
+            message,
+            cancellationToken,
+            req.History);
 
         return Results.Ok(new { reply });
     }
@@ -3299,7 +3300,6 @@ app.MapPost("/ai-vet/chat", async (
             statusCode: 502);
     }
 }).RequireAuthorization();
-
 
 app.Run();
 
