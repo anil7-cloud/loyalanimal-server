@@ -2393,15 +2393,125 @@ app.MapPost("/orders", async (
         });
     }
 
-    // ORDER TRANSACTION
-    await using (var transaction = await db.Database
-        .BeginTransactionAsync(IsolationLevel.Serializable))
+
+    // SIPARIS_SERIALIZATION_GUARD
+    try
     {
-        // Sipariş kaydı sonraki adımda eklenecek.
-        await transaction.RollbackAsync();
+        // ORDER TRANSACTION
+        await using var transaction = await db.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var currentCart = await db.CartItems
+            .Where(c => c.UserId == userId.Value)
+            .ToListAsync();
+
+        if (currentCart.Count == 0)
+            return Results.BadRequest(new { message = "Sepetiniz boş." });
+
+        var productIdsInCart = currentCart.Select(c => c.ProductId).Distinct().ToList();
+
+        var currentProducts = await db.Products
+            .Where(p => productIdsInCart.Contains(p.Id))
+            .ToListAsync();
+
+        var shopIdsInCart = currentProducts.Select(p => p.ShopId).Distinct().ToList();
+
+        var currentShops = await db.Shops
+            .Where(s => shopIdsInCart.Contains(s.Id))
+            .ToListAsync();
+
+        decimal finalTotal = 0m;
+        var orderLines = new List<OrderItem>();
+
+        foreach (var item in currentCart)
+        {
+            var product = currentProducts.FirstOrDefault(p => p.Id == item.ProductId);
+            if (product is null || !product.IsActive || !product.IsApproved ||
+                product.Price < 0 || item.Quantity <= 0 ||
+                product.Stock < item.Quantity)
+                return Results.BadRequest(new { message = "Ürün veya stok bilgisi değişti." });
+
+            var shop = currentShops.FirstOrDefault(s => s.Id == product.ShopId);
+            if (shop is null || !shop.IsActive || !shop.IsApproved)
+                return Results.BadRequest(new { message = "Mağaza satışa uygun değil." });
+
+            decimal lineTotal;
+            try
+            {
+                lineTotal = checked(product.Price * item.Quantity);
+                finalTotal = checked(finalTotal + lineTotal);
+            }
+            catch (OverflowException)
+            {
+                return Results.BadRequest(new { message = "Sipariş tutarı geçersiz." });
+            }
+
+            product.Stock -= item.Quantity;
+
+            orderLines.Add(new OrderItem
+            {
+                ProductId = product.Id,
+                ShopId = product.ShopId,
+                ProductName = product.Name,
+                Quantity = item.Quantity,
+                UnitPrice = product.Price,
+                TotalPrice = lineTotal
+            });
+        }
+
+        if (finalTotal <= 0 || finalTotal > 9999999999.99m)
+            return Results.BadRequest(new { message = "Sipariş tutarı geçersiz." });
+
+        var order = new Order
+        {
+            UserId = userId.Value,
+            TotalAmount = finalTotal,
+            Status = "Pending",
+            PaymentStatus = "Unpaid",
+            ShippingFullName = request.ShippingFullName.Trim(),
+            ShippingPhone = request.ShippingPhone.Trim(),
+            ShippingAddress = request.ShippingAddress.Trim(),
+            ShippingCity = request.ShippingCity.Trim(),
+            ShippingDistrict = request.ShippingDistrict.Trim(),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        foreach (var line in orderLines)
+            line.OrderId = order.Id;
+
+        db.OrderItems.AddRange(orderLines);
+        db.CartItems.RemoveRange(currentCart);
+
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Results.Ok(new
+        {
+            orderId = order.Id,
+            totalAmount = order.TotalAmount,
+            status = order.Status,
+            paymentStatus = order.PaymentStatus,
+            itemCount = orderLines.Count
+        });
+    }
+    catch (Npgsql.PostgresException ex) when (ex.SqlState == "40001" || ex.SqlState == "40P01")
+    {
+        return Results.Conflict(new
+        {
+            message = "Sipariş sırasında stok işlemi çakıştı. Lütfen tekrar deneyin."
+        });
+    }
+    catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+    {
+        return Results.Conflict(new
+        {
+            message = "Ürün bilgileri değişti. Lütfen sepetinizi kontrol edip tekrar deneyin."
+        });
     }
 
-    return Results.StatusCode(501);
 }).RequireAuthorization();
 
 // PETSHOP CART DELETE API
