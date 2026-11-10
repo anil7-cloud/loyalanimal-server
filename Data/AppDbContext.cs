@@ -20,6 +20,11 @@ public class AppDbContext : DbContext
     public DbSet<Shop> Shops => Set<Shop>();
     public DbSet<Product> Products => Set<Product>();
 
+    // SEPET VE SIPARISLER
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
     public DbSet<VetClinic> VetClinics => Set<VetClinic>();
 
     // 🔥 EKLEMEN GEREKENLER
