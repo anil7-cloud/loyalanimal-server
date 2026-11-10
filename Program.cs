@@ -2514,6 +2514,74 @@ app.MapPost("/orders", async (
 
 }).RequireAuthorization();
 
+// PETSHOP ORDER HISTORY API
+app.MapGet("/orders", async (
+    ClaimsPrincipal principal,
+    AppDbContext db) =>
+{
+    var userId =
+        LoyalAnimal.Server.Security.AuthenticatedUser.GetUserId(principal);
+
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var orders = await db.Orders
+        .AsNoTracking()
+        .Where(o => o.UserId == userId.Value)
+        .OrderByDescending(o => o.CreatedAtUtc)
+        .ThenByDescending(o => o.Id)
+        .Select(o => new
+        {
+            orderId = o.Id,
+            totalAmount = o.TotalAmount,
+            status = o.Status,
+            paymentStatus = o.PaymentStatus,
+            createdAtUtc = o.CreatedAtUtc
+        })
+        .ToListAsync();
+
+    var orderIds = orders.Select(o => o.orderId).ToList();
+
+    var items = await db.OrderItems
+        .AsNoTracking()
+        .Where(i => orderIds.Contains(i.OrderId))
+        .OrderBy(i => i.Id)
+        .Select(i => new
+        {
+            i.OrderId,
+            i.ProductId,
+            i.ShopId,
+            i.ProductName,
+            i.Quantity,
+            i.UnitPrice,
+            i.TotalPrice
+        })
+        .ToListAsync();
+
+    var result = orders.Select(o => new
+    {
+        o.orderId,
+        o.totalAmount,
+        o.status,
+        o.paymentStatus,
+        o.createdAtUtc,
+        items = items
+            .Where(i => i.OrderId == o.orderId)
+            .Select(i => new
+            {
+                productId = i.ProductId,
+                shopId = i.ShopId,
+                productName = i.ProductName,
+                quantity = i.Quantity,
+                unitPrice = i.UnitPrice,
+                totalPrice = i.TotalPrice
+            })
+            .ToList()
+    });
+
+    return Results.Ok(result);
+}).RequireAuthorization();
+
 // PETSHOP CART DELETE API
 app.MapDelete("/cart/items/{cartItemId:int}", async (
     int cartItemId,
