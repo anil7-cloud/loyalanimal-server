@@ -2514,6 +2514,83 @@ app.MapPost("/orders", async (
 
 }).RequireAuthorization();
 
+// PETSHOP SELLER ORDERS API
+app.MapGet("/shops/{shopId:int}/orders", async (
+    int shopId,
+    ClaimsPrincipal principal,
+    AppDbContext db) =>
+{
+    var userId =
+        LoyalAnimal.Server.Security.AuthenticatedUser.GetUserId(principal);
+
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var shop = await db.Shops
+        .AsNoTracking()
+        .FirstOrDefaultAsync(s =>
+            s.Id == shopId &&
+            s.OwnerUserId == userId.Value);
+
+    if (shop is null)
+        return Results.NotFound(new { message = "Mağaza bulunamadı." });
+
+    var items = await db.OrderItems
+        .AsNoTracking()
+        .Where(i => i.ShopId == shopId)
+        .OrderByDescending(i => i.OrderId)
+        .Select(i => new
+        {
+            i.OrderId,
+            i.ProductId,
+            i.ProductName,
+            i.Quantity,
+            i.UnitPrice,
+            i.TotalPrice
+        })
+        .ToListAsync();
+
+    var orderIds = items.Select(i => i.OrderId).Distinct().ToList();
+
+    var orders = await db.Orders
+        .AsNoTracking()
+        .Where(o => orderIds.Contains(o.Id))
+        .OrderByDescending(o => o.CreatedAtUtc)
+        .ThenByDescending(o => o.Id)
+        .Select(o => new
+        {
+            o.Id,
+            o.Status,
+            o.PaymentStatus,
+            o.CreatedAtUtc
+        })
+        .ToListAsync();
+
+    var result = orders.Select(o => new
+    {
+        orderId = o.Id,
+        status = o.Status,
+        paymentStatus = o.PaymentStatus,
+        createdAtUtc = o.CreatedAtUtc,
+        items = items
+            .Where(i => i.OrderId == o.Id)
+            .Select(i => new
+            {
+                productId = i.ProductId,
+                productName = i.ProductName,
+                quantity = i.Quantity,
+                unitPrice = i.UnitPrice,
+                totalPrice = i.TotalPrice
+            })
+            .ToList(),
+        shopTotal = items
+            .Where(i => i.OrderId == o.Id)
+            .Sum(i => i.TotalPrice)
+    });
+
+    return Results.Ok(result);
+}).RequireAuthorization();
+
 // PETSHOP ORDER HISTORY API
 app.MapGet("/orders", async (
     ClaimsPrincipal principal,
