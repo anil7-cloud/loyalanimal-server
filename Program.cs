@@ -1313,9 +1313,20 @@ app.MapPost("/auth/login", async (
 
 // PETS
 
-app.MapGet("/pets", async (PetService petService) =>
+app.MapGet("/pets", async (
+    AppDbContext db,
+    System.Security.Claims.ClaimsPrincipal principal) =>
 {
-    var pets = await petService.GetAllPetsAsync();
+    var userId =
+        LoyalAnimal.Server.Security.AuthenticatedUser.GetUserId(principal);
+
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var pets = await db.Pets
+        .AsNoTracking()
+        .Where(p => p.OwnerUserId == userId.Value)
+        .ToListAsync();
 
     return Results.Ok(pets);
 }).RequireAuthorization();
