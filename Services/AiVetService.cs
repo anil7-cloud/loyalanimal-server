@@ -151,4 +151,108 @@ public sealed class AiVetService
 
         return contents.ToArray();
     }
+
+    public async Task<string> AnalyzeImageAsync(
+        string prompt,
+        byte[] imageBytes,
+        string mimeType,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured)
+            throw new InvalidOperationException(
+                "Gemini API anahtarı yapılandırılmadı.");
+
+        if (imageBytes.Length == 0 || imageBytes.Length > 10 * 1024 * 1024)
+            throw new ArgumentException("Fotoğraf boş veya 10 MB sınırını aşıyor.");
+
+        if (mimeType is not ("image/jpeg" or "image/png" or "image/webp"))
+            throw new ArgumentException("Desteklenmeyen fotoğraf formatı.");
+
+        var payload = new
+        {
+            systemInstruction = new
+            {
+                parts = new[]
+                {
+                    new
+                    {
+                        text = """
+                            Sen evcil hayvan sağlığı ve bakımı hakkında
+                            Türkçe bilgilendirme yapan bir yapay zekâ asistanısın.
+                            Fotoğrafta yalnızca gerçekten gözlemleyebildiğin
+                            özellikleri açıkla. Kesin teşhis koyma.
+                            Fotoğraftan hastalık kesin olarak belirlenemez.
+                            İlaç veya ilaç dozu önerme.
+                            Acil belirtiler varsa derhal veterinere yönlendir.
+                            Yanıtlarını anlaşılır başlıklarla ve Türkçe ver.
+                            """
+                    }
+                }
+            },
+            contents = new[]
+            {
+                new
+                {
+                    role = "user",
+                    parts = new object[]
+                    {
+                        new { text = prompt },
+                        new
+                        {
+                            inlineData = new
+                            {
+                                mimeType,
+                                data = Convert.ToBase64String(imageBytes)
+                            }
+                        }
+                    }
+                }
+            },
+            generationConfig = new
+            {
+                maxOutputTokens = 1200
+            }
+        };
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, GeminiUrl);
+
+        request.Headers.Add("x-goog-api-key", _apiKey);
+        request.Content = JsonContent.Create(payload);
+
+        using var response = await _httpClient.SendAsync(
+            request, cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        using var json = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(cancellationToken),
+            cancellationToken: cancellationToken);
+
+        if (json.RootElement.TryGetProperty("candidates", out var candidates))
+        {
+            foreach (var candidate in candidates.EnumerateArray())
+            {
+                if (!candidate.TryGetProperty("content", out var content))
+                    continue;
+
+                if (!content.TryGetProperty("parts", out var parts))
+                    continue;
+
+                foreach (var part in parts.EnumerateArray())
+                {
+                    if (part.TryGetProperty("text", out var text))
+                    {
+                        var answer = text.GetString();
+                        if (!string.IsNullOrWhiteSpace(answer))
+                            return answer;
+                    }
+                }
+            }
+        }
+
+        throw new InvalidOperationException(
+            "Gemini fotoğraf analizi yanıtı alınamadı.");
+    }
+
 }
